@@ -78,6 +78,8 @@ model Patient {
   dateOfBirth        DateTime?
   gender             String?
   bloodGroup         String?              // e.g. "B+", "O+", "A-"
+  phone              String?              // Patient's personal phone number
+  address            String?              // Home address
   emergencyContact   String?
   allergies          String?              // Comma-separated or JSON string
   chronicConditions  String?              // e.g. "Hypertension, Type 2 Diabetes"
