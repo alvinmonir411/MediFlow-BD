@@ -1,11 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const patient = await prisma.patient.findFirst({
-      include: { organization: true },
-    });
+    const { searchParams } = new URL(req.url);
+    const patientId = searchParams.get("patientId");
+
+    let patient;
+    if (patientId && patientId !== "default") {
+      patient = await prisma.patient.findUnique({
+        where: { id: patientId },
+        include: { organization: true },
+      });
+    }
+
+    if (!patient) {
+      patient = await prisma.patient.findFirst({
+        include: { organization: true },
+      });
+    }
 
     if (!patient) {
       return NextResponse.json({
@@ -25,7 +38,7 @@ export async function GET() {
     const endOfDay = new Date();
     endOfDay.setHours(23, 59, 59, 999);
 
-    // Fetch doses from Neon PostgreSQL
+    // Fetch doses from Neon PostgreSQL for this specific patient
     const doses = await prisma.medicationDose.findMany({
       where: {
         schedule: {
