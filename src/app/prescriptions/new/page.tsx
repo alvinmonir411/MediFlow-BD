@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { 
   UploadCloud, 
@@ -9,14 +9,13 @@ import {
   AlertTriangle, 
   ShieldAlert, 
   Pill, 
-  Clock, 
-  FileText, 
   Building2, 
   UserCheck,
-  Edit2,
   Trash2,
-  Plus,
   RefreshCw,
+  Camera,
+  Image as ImageIcon,
+  X,
   ArrowRight
 } from "lucide-react";
 import confetti from "canvas-confetti";
@@ -25,67 +24,73 @@ import type { ResolvedMedicineResult } from "@/lib/safety/medicine-resolver";
 
 export default function NewPrescriptionPage() {
   const router = useRouter();
-  const [selectedPreset, setSelectedPreset] = useState<string>("fever_gastric");
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [mimeType, setMimeType] = useState<string>("image/jpeg");
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [extractedData, setExtractedData] = useState<FullProcessedPrescription | null>(null);
   const [medicines, setMedicines] = useState<ResolvedMedicineResult[]>([]);
   const [confirming, setConfirming] = useState(false);
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
-  const handleExtractPreset = async (presetKey: string) => {
-    setSelectedPreset(presetKey);
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setMimeType(file.type || "image/jpeg");
+    setErrorMessage(null);
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setImagePreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleClearImage = () => {
+    setImagePreview(null);
+    setExtractedData(null);
+    setMedicines([]);
+    setErrorMessage(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const handleRunGeminiOCR = async () => {
+    if (!imagePreview) {
+      setErrorMessage("Please select or capture a prescription image first.");
+      return;
+    }
+
     setLoading(true);
-    setStatusMessage("Extracting structured clinical data via Gemini 2.5 Flash Vision...");
+    setErrorMessage(null);
 
     try {
       const res = await fetch("/api/v1/ai/extract-prescription", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ presetKey }),
+        body: JSON.stringify({
+          imageBase64: imagePreview,
+          mimeType,
+        }),
       });
+
       const json = await res.json();
-      if (json.success) {
-        setExtractedData(json.data);
-        setMedicines(json.data.medicines);
-        setStatusMessage(null);
+
+      if (!json.success) {
+        throw new Error(json.error || "Failed to extract prescription.");
       }
-    } catch (e) {
-      console.error(e);
-      setStatusMessage("Extraction failed. Please try again.");
+
+      setExtractedData(json.data);
+      setMedicines(json.data.medicines);
+    } catch (err: any) {
+      console.error(err);
+      setErrorMessage(err.message || "An unexpected error occurred while analyzing the prescription with Gemini.");
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setLoading(true);
-    setStatusMessage("Reading prescription image and sending to Gemini Vision...");
-
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const base64 = reader.result as string;
-      try {
-        const res = await fetch("/api/v1/ai/extract-prescription", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ imageBase64: base64, mimeType: file.type }),
-        });
-        const json = await res.json();
-        if (json.success) {
-          setExtractedData(json.data);
-          setMedicines(json.data.medicines);
-          setStatusMessage(null);
-        }
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    reader.readAsDataURL(file);
   };
 
   const handleUpdateMedicine = (index: number, field: string, value: any) => {
@@ -101,31 +106,38 @@ export default function NewPrescriptionPage() {
   const handleConfirmPrescription = async () => {
     if (medicines.length === 0) return;
     setConfirming(true);
+    setErrorMessage(null);
 
     try {
       const res = await fetch("/api/v1/prescriptions/confirm", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          doctorName: extractedData?.doctorName || "Dr. K. M. Rahman",
-          hospitalName: extractedData?.hospitalName || "Prescription Clinic",
+          doctorName: extractedData?.doctorName || "Doctor",
+          hospitalName: extractedData?.hospitalName || "Prescription Medical Center",
+          prescriptionDate: extractedData?.prescriptionDate,
           medicines,
         }),
       });
+
       const json = await res.json();
-      if (json.success) {
-        confetti({
-          particleCount: 100,
-          spread: 80,
-          origin: { y: 0.6 },
-          colors: ["#0f766e", "#14b8a6", "#38bdf8"],
-        });
-        setTimeout(() => {
-          router.push("/doses");
-        }, 1200);
+      if (!json.success) {
+        throw new Error(json.error || "Failed to save prescription to database.");
       }
-    } catch (e) {
+
+      confetti({
+        particleCount: 100,
+        spread: 80,
+        origin: { y: 0.6 },
+        colors: ["#0f766e", "#14b8a6", "#38bdf8"],
+      });
+
+      setTimeout(() => {
+        router.push("/doses");
+      }, 1200);
+    } catch (e: any) {
       console.error(e);
+      setErrorMessage(e.message || "Failed to save confirmed prescription.");
     } finally {
       setConfirming(false);
     }
@@ -138,151 +150,155 @@ export default function NewPrescriptionPage() {
         <div>
           <div className="flex items-center gap-2 text-teal-600 dark:text-teal-400 text-xs font-bold uppercase tracking-wider">
             <Sparkles className="w-4 h-4" />
-            Gemini 2.5 Flash Vision OCR
+            Gemini 3.6 Flash Vision OCR
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white mt-1">
-            Prescription Scanner & Human Verification
+            Real Prescription Scanner & Verification
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            "AI extracts, Doctor/Patient confirms." Structured clinical data validated with Zod & Bangladesh Medicine Database.
+            Upload or capture your real prescription photo. Structured JSON is extracted via Gemini Vision and verified against the Bangladesh Medicine Database.
           </p>
         </div>
 
         <div className="flex items-center gap-2">
           <span className="text-xs font-semibold px-3 py-1.5 rounded-full bg-teal-50 dark:bg-teal-950 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 flex items-center gap-1.5">
-            <UserCheck className="w-3.5 h-3.5" /> Human-in-the-Loop Active
+            <UserCheck className="w-3.5 h-3.5" /> Human Confirmation Required
           </span>
         </div>
       </div>
 
-      {/* Step 1: Upload or Choose Sample Preset */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Live File Upload Box */}
-        <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border-2 border-dashed border-teal-300 dark:border-teal-800 hover:border-teal-500 transition-colors flex flex-col items-center justify-center text-center group">
-          <input
-            type="file"
-            id="prescription-file"
-            accept="image/*"
-            onChange={handleFileUpload}
-            className="hidden"
-          />
-          <label htmlFor="prescription-file" className="cursor-pointer flex flex-col items-center">
-            <div className="w-14 h-14 rounded-2xl bg-teal-50 dark:bg-teal-950 flex items-center justify-center text-teal-600 dark:text-teal-400 group-hover:scale-110 transition-transform">
-              <UploadCloud className="w-7 h-7" />
-            </div>
-            <span className="font-bold text-sm text-slate-900 dark:text-white mt-3 block">
-              Upload Prescription Photo
-            </span>
-            <span className="text-xs text-slate-500 mt-1 block">
-              JPG, PNG, WebP up to 10MB
-            </span>
-            <span className="mt-3 text-xs font-semibold text-teal-600 bg-teal-50 dark:bg-teal-950 px-3 py-1 rounded-full">
-              Browse Files or Camera
-            </span>
-          </label>
+      {/* Error Alert if any */}
+      {errorMessage && (
+        <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 flex items-start gap-3 text-rose-800 dark:text-rose-200 text-xs font-semibold">
+          <AlertTriangle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
+          <span>{errorMessage}</span>
         </div>
+      )}
 
-        {/* Demo Bangladeshi Prescriptions */}
-        <div className="lg:col-span-2 p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-col justify-between">
+      {/* Upload & Preview Studio */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Upload Box */}
+        <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-col justify-between space-y-4">
           <div>
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
-              Quick Test: Bangladeshi Clinical Prescriptions
+              Step 1: Upload or Capture Prescription
             </span>
             <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-              Select any realistic Bangladeshi prescription scenario to test instant extraction & safety checks:
+              Ensure doctor's handwriting or printed medicine names are visible and well-lit.
             </p>
+          </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
-              <button
-                type="button"
-                onClick={() => handleExtractPreset("fever_gastric")}
-                className={`p-3.5 rounded-xl text-left border transition-all ${
-                  selectedPreset === "fever_gastric"
-                    ? "bg-teal-50 dark:bg-teal-950/60 border-teal-500 text-teal-900 dark:text-teal-200 shadow-sm"
-                    : "bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-teal-400"
-                }`}
-              >
-                <span className="font-bold text-xs block text-teal-700 dark:text-teal-300">
-                  Scenario 1: Fever & Gastric
+          {!imagePreview ? (
+            <div className="border-2 border-dashed border-teal-300 dark:border-teal-800 hover:border-teal-500 transition-colors rounded-2xl p-8 flex flex-col items-center justify-center text-center group cursor-pointer">
+              <input
+                ref={fileInputRef}
+                type="file"
+                id="prescription-upload-input"
+                accept="image/*"
+                capture="environment"
+                onChange={handleFileChange}
+                className="hidden"
+              />
+              <label htmlFor="prescription-upload-input" className="cursor-pointer flex flex-col items-center">
+                <div className="w-16 h-16 rounded-2xl bg-teal-50 dark:bg-teal-950 flex items-center justify-center text-teal-600 dark:text-teal-400 group-hover:scale-110 transition-transform">
+                  <Camera className="w-8 h-8" />
+                </div>
+                <span className="font-bold text-sm text-slate-900 dark:text-white mt-4 block">
+                  Click to Take Photo or Browse
                 </span>
-                <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-1">
-                  Napa 500mg, Seclo 20mg, Bicozin (Square/Beximco)
+                <span className="text-xs text-slate-500 mt-1 block">
+                  Supports JPG, PNG, WebP up to 15MB
                 </span>
-              </button>
+              </label>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="relative rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-950 flex items-center justify-center max-h-72">
+                <img
+                  src={imagePreview}
+                  alt="Prescription Preview"
+                  className="max-h-72 w-full object-contain"
+                />
+                <button
+                  type="button"
+                  onClick={handleClearImage}
+                  className="absolute top-3 right-3 p-1.5 rounded-full bg-slate-900/80 text-white hover:bg-rose-600 transition-colors"
+                  title="Remove image"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
 
-              <button
-                type="button"
-                onClick={() => handleExtractPreset("infection_antibiotic")}
-                className={`p-3.5 rounded-xl text-left border transition-all ${
-                  selectedPreset === "infection_antibiotic"
-                    ? "bg-teal-50 dark:bg-teal-950/60 border-teal-500 text-teal-900 dark:text-teal-200 shadow-sm"
-                    : "bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-teal-400"
-                }`}
-              >
-                <span className="font-bold text-xs block text-teal-700 dark:text-teal-300">
-                  Scenario 2: Antibiotic Guard
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-500">
+                  Image ready for Gemini Vision
                 </span>
-                <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-1">
-                  Ciprocin 500mg (7-day fixed course), Sergel 20mg
-                </span>
-              </button>
+                <button
+                  type="button"
+                  onClick={handleClearImage}
+                  className="text-xs font-semibold text-rose-600 hover:underline"
+                >
+                  Change Image
+                </button>
+              </div>
+            </div>
+          )}
 
-              <button
-                type="button"
-                onClick={() => handleExtractPreset("duplicate_warning")}
-                className={`p-3.5 rounded-xl text-left border transition-all ${
-                  selectedPreset === "duplicate_warning"
-                    ? "bg-rose-50 dark:bg-rose-950/60 border-rose-500 text-rose-900 dark:text-rose-200 shadow-sm"
-                    : "bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-rose-400"
-                }`}
-              >
-                <span className="font-bold text-xs block text-rose-700 dark:text-rose-400">
-                  Scenario 3: Safety Risk Flag
-                </span>
-                <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-1">
-                  Napa + Ace Plus (Duplicate Paracetamol Warning)
-                </span>
-              </button>
+          <button
+            onClick={handleRunGeminiOCR}
+            disabled={!imagePreview || loading}
+            className={`w-full py-3.5 px-4 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 transition-all ${
+              imagePreview && !loading
+                ? "bg-teal-600 hover:bg-teal-700 text-white shadow-lg shadow-teal-600/20 active:scale-[0.98]"
+                : "bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed"
+            }`}
+          >
+            <Sparkles className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+            {loading ? "Gemini 3.6 Flash Analyzing Document..." : "Extract Medicines with Gemini AI"}
+          </button>
+        </div>
+
+        {/* Step Instructions / Medical Safety Panel */}
+        <div className="p-6 rounded-3xl bg-gradient-to-br from-slate-900 to-slate-950 text-white border border-slate-800 flex flex-col justify-between space-y-6">
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-teal-400 text-xs font-bold uppercase tracking-wider">
+              <ShieldAlert className="w-4 h-4" />
+              Safety & Verification Architecture
+            </div>
+            <h3 className="text-lg font-bold text-white">
+              Strictly Clinical — Never An "AI Doctor"
+            </h3>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              MediFlow BD uses Google Gemini Vision to read doctor's handwriting and convert it into structured medication schedules.
+            </p>
+            
+            <div className="space-y-2 pt-2 text-xs text-slate-300">
+              <div className="flex items-start gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-teal-400 mt-1.5" />
+                <span><strong>AI Extracts:</strong> Identifies medicine brand, dose, frequency (e.g. 1+0+1), and food timing.</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-teal-400 mt-1.5" />
+                <span><strong>Rule Engine Validates:</strong> Matches against Bangladesh DGDA database and checks for duplicate paracetamol or antibiotic course completion.</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-teal-400 mt-1.5" />
+                <span><strong>Human Confirms:</strong> You review the list side-by-side with your physical prescription before committing to database.</span>
+              </div>
             </div>
           </div>
 
-          <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-            <span className="text-xs text-slate-500">
-              Ready to process via Gemini 2.5 Flash Vision
-            </span>
-            <button
-              onClick={() => handleExtractPreset(selectedPreset)}
-              disabled={loading}
-              className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
-              {loading ? "Extracting..." : "Process Selected Prescription"}
-            </button>
+          <div className="pt-4 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
+            <span>Model: Gemini 3.6 Flash</span>
+            <span>Database: Neon PostgreSQL</span>
           </div>
         </div>
       </div>
 
-      {/* Live Loading Feedback */}
-      {loading && (
-        <div className="p-6 rounded-2xl bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800 flex items-center gap-4 animate-pulse">
-          <div className="w-10 h-10 rounded-xl bg-teal-600 text-white flex items-center justify-center">
-            <Sparkles className="w-5 h-5 animate-spin" />
-          </div>
-          <div>
-            <h4 className="text-sm font-bold text-teal-900 dark:text-teal-200">
-              Analyzing Prescription Document
-            </h4>
-            <p className="text-xs text-teal-700 dark:text-teal-400">
-              {statusMessage || "Gemini 2.5 Flash Vision is reading handwriting & matching Bangladesh drug databases..."}
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Extracted Prescription & Human Verification Studio */}
+      {/* Step 2: Extracted Results & Verification Studio */}
       {extractedData && !loading && (
-        <div className="space-y-6">
-          {/* Doctor & Hospital Clinical Header */}
+        <div className="space-y-6 animate-fadeIn">
+          {/* Clinical Header */}
           <div className="p-5 rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="space-y-1">
               <span className="text-[11px] font-bold text-teal-600 uppercase tracking-wider block">
@@ -299,12 +315,12 @@ export default function NewPrescriptionPage() {
 
             <div className="text-right">
               <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                Zod Schema Validated
+                Gemini OCR Validated
               </span>
             </div>
           </div>
 
-          {/* Safety Alert Interceptor Banner (Deterministic Rule Engine) */}
+          {/* Safety Alert Interceptor */}
           {extractedData.safetyAlerts && extractedData.safetyAlerts.length > 0 && (
             <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 space-y-2">
               <div className="flex items-center gap-2 text-rose-700 dark:text-rose-300 font-bold text-xs uppercase tracking-wider">
@@ -319,7 +335,7 @@ export default function NewPrescriptionPage() {
             </div>
           )}
 
-          {/* Extracted Medicines List (Human Verification) */}
+          {/* Extracted Medicines Table */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
@@ -327,7 +343,7 @@ export default function NewPrescriptionPage() {
                   Extracted Medicines ({medicines.length})
                 </h3>
                 <p className="text-xs text-slate-500">
-                  Verify dosage, frequency and timing before activating schedule.
+                  Please review dosage, frequency, and timing before activating schedule.
                 </p>
               </div>
 
@@ -336,7 +352,7 @@ export default function NewPrescriptionPage() {
                   <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> High (≥90%)
                 </span>
                 <span className="flex items-center gap-1 text-amber-700 dark:text-amber-300 font-semibold">
-                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500" /> Review (75-89%)
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500" /> Review (&lt;90%)
                 </span>
               </div>
             </div>
@@ -344,7 +360,6 @@ export default function NewPrescriptionPage() {
             <div className="space-y-3">
               {medicines.map((med, index) => {
                 const isHigh = med.confidenceScore >= 0.90;
-                const isMed = med.confidenceScore >= 0.75 && med.confidenceScore < 0.90;
 
                 return (
                   <div
@@ -356,7 +371,7 @@ export default function NewPrescriptionPage() {
                     }`}
                   >
                     <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                      {/* Left info & confidence */}
+                      {/* Left Info */}
                       <div className="space-y-1 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-extrabold text-base text-slate-900 dark:text-white">
@@ -369,14 +384,11 @@ export default function NewPrescriptionPage() {
                             ({med.resolvedGeneric})
                           </span>
 
-                          {/* Confidence Score Pill */}
                           <span
                             className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${
                               isHigh
                                 ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/80 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800"
-                                : isMed
-                                ? "bg-amber-50 text-amber-700 dark:bg-amber-950/80 dark:text-amber-300 border-amber-300 dark:border-amber-800"
-                                : "bg-rose-50 text-rose-700 dark:bg-rose-950/80 dark:text-rose-300 border-rose-300 dark:border-rose-800"
+                                : "bg-amber-50 text-amber-700 dark:bg-amber-950/80 dark:text-amber-300 border-amber-300 dark:border-amber-800"
                             }`}
                           >
                             Confidence: {Math.round(med.confidenceScore * 100)}%
@@ -396,7 +408,7 @@ export default function NewPrescriptionPage() {
                         )}
                       </div>
 
-                      {/* Editable Inputs for Dosage, Frequency & Timing */}
+                      {/* Editable Form Controls */}
                       <div className="flex flex-wrap items-center gap-3">
                         <div>
                           <label className="text-[10.5px] font-bold text-slate-500 block uppercase">
@@ -469,17 +481,17 @@ export default function NewPrescriptionPage() {
             </div>
           </div>
 
-          {/* Verification Disclaimer & Confirmation Action */}
+          {/* Confirm & Activate Action */}
           <div className="p-6 rounded-3xl bg-gradient-to-r from-teal-900 to-slate-900 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-6 shadow-xl">
             <div className="space-y-1 max-w-xl">
               <span className="text-xs font-bold text-teal-400 uppercase tracking-wider block">
-                Human Confirmation Checkpoint
+                Save to Neon PostgreSQL
               </span>
               <h4 className="font-extrabold text-lg text-white">
-                Confirm & Activate Medication Reminders
+                Confirm & Activate Real Medication Schedule
               </h4>
               <p className="text-xs text-teal-200/80">
-                By clicking Confirm, you verify that you have reviewed the extracted medicines against the physical prescription. Alarms will be immediately scheduled.
+                Clicking confirm writes this prescription and today's dose slots directly to your Neon database and records an immutable audit log entry.
               </p>
             </div>
 
@@ -489,7 +501,7 @@ export default function NewPrescriptionPage() {
               className="px-6 py-3.5 rounded-2xl bg-teal-500 hover:bg-teal-400 active:scale-95 text-slate-950 font-extrabold text-sm transition-all flex items-center justify-center gap-2 shadow-lg shadow-teal-500/20 whitespace-nowrap"
             >
               <CheckCircle2 className="w-5 h-5" />
-              {confirming ? "Activating Schedules..." : "Confirm Prescription"}
+              {confirming ? "Saving to Neon DB..." : "Confirm & Save to Neon"}
             </button>
           </div>
         </div>

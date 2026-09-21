@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { extractPrescriptionWithGemini, SAMPLE_PRESETS } from "@/lib/ai/gemini-ocr";
+import { extractPrescriptionWithGemini } from "@/lib/ai/gemini-ocr";
 
 export async function POST(req: NextRequest) {
   try {
@@ -7,41 +7,39 @@ export async function POST(req: NextRequest) {
     try {
       body = await req.json();
     } catch {
-      body = {};
+      return NextResponse.json(
+        { success: false, error: "Invalid JSON body. Please upload a prescription image." },
+        { status: 400 }
+      );
     }
 
-    const { imageBase64, presetKey, mimeType } = body;
-
-    if (presetKey && SAMPLE_PRESETS[presetKey]) {
-      // User selected a quick test preset
-      return NextResponse.json({
-        success: true,
-        data: SAMPLE_PRESETS[presetKey],
-      });
-    }
+    const { imageBase64, mimeType } = body;
 
     if (!imageBase64) {
-      // Default to fever_gastric preset if no image provided
-      return NextResponse.json({
-        success: true,
-        data: SAMPLE_PRESETS.fever_gastric,
-      });
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: "No prescription image provided. Please select or capture a prescription image to scan." 
+        },
+        { status: 400 }
+      );
     }
 
+    // Run real Gemini 3.6 Flash Vision OCR
     const extraction = await extractPrescriptionWithGemini(imageBase64, mimeType || "image/jpeg");
+
     return NextResponse.json({
       success: true,
       data: extraction,
     });
   } catch (error: any) {
-    console.error("AI extraction error:", error);
+    console.error("Real Gemini OCR error:", error);
     return NextResponse.json(
       {
-        success: true,
-        data: SAMPLE_PRESETS.fever_gastric,
-        warning: "Encountered processing issue, used fallback preset.",
+        success: false,
+        error: error.message || "Failed to extract prescription with Gemini AI.",
       },
-      { status: 200 }
+      { status: 500 }
     );
   }
 }
