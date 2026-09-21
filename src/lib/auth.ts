@@ -16,6 +16,7 @@ export interface SessionPayload {
   role: string;
   email?: string;
   name: string;
+  photo?: string;
 }
 
 export async function hashPassword(password: string): Promise<string> {

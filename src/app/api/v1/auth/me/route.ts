@@ -53,6 +53,7 @@ export async function GET(req: NextRequest) {
         name: user.name,
         email: user.email,
         phone: user.phone,
+        photo: user.photo,
         role: user.role,
         organizationId: user.organizationId,
       },

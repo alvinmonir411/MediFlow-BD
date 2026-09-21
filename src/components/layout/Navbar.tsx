@@ -30,6 +30,7 @@ interface UserSession {
   name: string;
   email?: string;
   phone?: string;
+  photo?: string;
   role: string;
 }
 
@@ -237,9 +238,17 @@ export function Navbar() {
                   }}
                   className="flex items-center gap-2 p-1 rounded-full border border-slate-200 dark:border-slate-700 hover:border-teal-500 transition-colors focus:outline-none"
                 >
-                  <div className="w-8 h-8 rounded-full bg-teal-600 text-white flex items-center justify-center text-xs font-extrabold shadow-sm">
-                    {getInitials(user.name)}
-                  </div>
+                  {user.photo ? (
+                    <img
+                      src={user.photo}
+                      alt={user.name}
+                      className="w-8 h-8 rounded-full object-cover border border-teal-500 shadow-sm"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-teal-600 text-white flex items-center justify-center text-xs font-extrabold shadow-sm">
+                      {getInitials(user.name)}
+                    </div>
+                  )}
                   <ChevronDown className="w-3.5 h-3.5 text-slate-400 mr-1" />
                 </button>
 
@@ -372,10 +381,18 @@ export function Navbar() {
             <div className="pt-3 border-t border-slate-100 dark:border-slate-800 px-3 space-y-2">
               {user ? (
                 <div className="space-y-1">
-                  <div className="flex items-center gap-2 py-2">
-                    <div className="w-7 h-7 rounded-full bg-teal-600 text-white flex items-center justify-center text-xs font-bold">
-                      {getInitials(user.name)}
-                    </div>
+                  <div className="flex items-center gap-2.5 py-2">
+                    {user.photo ? (
+                      <img
+                        src={user.photo}
+                        alt={user.name}
+                        className="w-7 h-7 rounded-full object-cover border border-teal-500"
+                      />
+                    ) : (
+                      <div className="w-7 h-7 rounded-full bg-teal-600 text-white flex items-center justify-center text-xs font-bold">
+                        {getInitials(user.name)}
+                      </div>
+                    )}
                     <span className="text-xs font-bold text-slate-900 dark:text-white">
                       {user.name}
                     </span>

@@ -5,49 +5,91 @@ import { hashPassword, createSessionToken, COOKIE_NAME } from "@/lib/auth";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { name, email, phone, password, role } = body;
+    const { name, email, phone, password, photoUrl, photo, role } = body;
 
-    if (!name || !password || (!email && !phone)) {
+    // Section 2 Register Requirements: Name, Email, Password required
+    if (!name || typeof name !== "string" || name.trim().length === 0) {
       return NextResponse.json(
-        { success: false, error: "Name, password, and either email or phone are required." },
+        { success: false, error: "Full Name is required." },
         { status: 400 }
       );
     }
+
+    if (!email || typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      return NextResponse.json(
+        { success: false, error: "A valid email address is required (e.g. user@example.com)." },
+        { status: 400 }
+      );
+    }
+
+    if (!password || typeof password !== "string") {
+      return NextResponse.json(
+        { success: false, error: "Password is required." },
+        { status: 400 }
+      );
+    }
+
+    // Section 2 Password requirements:
+    // Minimum 6 characters, at least one uppercase letter, at least one lowercase letter
+    if (password.length < 6) {
+      return NextResponse.json(
+        { success: false, error: "Password must be at least 6 characters long." },
+        { status: 400 }
+      );
+    }
+
+    if (!/[A-Z]/.test(password)) {
+      return NextResponse.json(
+        { success: false, error: "Password must contain at least one uppercase letter (A-Z)." },
+        { status: 400 }
+      );
+    }
+
+    if (!/[a-z]/.test(password)) {
+      return NextResponse.json(
+        { success: false, error: "Password must contain at least one lowercase letter (a-z)." },
+        { status: 400 }
+      );
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPhoto = (photoUrl || photo || "").trim() || null;
 
     // Check if user already exists in Neon DB
     const existingUser = await prisma.user.findFirst({
       where: {
         OR: [
-          email ? { email } : {},
-          phone ? { phone } : {},
+          { email: cleanEmail },
+          phone ? { phone: phone.trim() } : {},
         ],
       },
     });
 
     if (existingUser) {
       return NextResponse.json(
-        { success: false, error: "A user with this email or phone already exists." },
+        { success: false, error: "An account with this email address already exists. Please log in." },
         { status: 409 }
       );
     }
 
-    // 1. Create Organization (Tenant)
+    // 1. Create Organization (Tenant) for the patient/family
     const organization = await prisma.organization.create({
       data: {
-        name: `${name}'s Family Healthcare`,
+        name: `${name.trim()}'s Health Profile`,
         type: "FAMILY",
       },
     });
 
-    // 2. Hash Password and Create User
+    // 2. Hash Password and Create User with optional profile photo
     const passwordHash = await hashPassword(password);
     const user = await prisma.user.create({
       data: {
         organizationId: organization.id,
-        name,
-        email: email || null,
-        phone: phone || null,
+        name: name.trim(),
+        email: cleanEmail,
+        phone: phone ? phone.trim() : null,
         passwordHash,
+        photo: cleanPhoto,
         role: role === "CAREGIVER" ? "CAREGIVER" : "PATIENT",
       },
     });
@@ -57,10 +99,10 @@ export async function POST(req: NextRequest) {
       data: {
         organizationId: organization.id,
         createdByUserId: user.id,
-        name,
+        name: user.name,
         gender: "Not specified",
-        bloodGroup: "Not specified",
-        emergencyContact: phone || "Not set",
+        bloodGroup: "B+",
+        emergencyContact: phone ? phone.trim() : "Not set",
       },
     });
 
@@ -72,7 +114,7 @@ export async function POST(req: NextRequest) {
         action: "USER_REGISTERED",
         resourceType: "User",
         resourceId: user.id,
-        diffJson: JSON.stringify({ email, phone, role: user.role }),
+        diffJson: JSON.stringify({ email: cleanEmail, role: user.role, hasPhoto: !!cleanPhoto }),
       },
     });
 
@@ -83,16 +125,18 @@ export async function POST(req: NextRequest) {
       role: user.role,
       email: user.email || undefined,
       name: user.name,
+      photo: user.photo || undefined,
     });
 
     const response = NextResponse.json({
       success: true,
-      message: "Account created successfully!",
+      message: "Account created successfully! Welcome to PrescriptionMate BD.",
       user: {
         id: user.id,
         name: user.name,
         email: user.email,
         phone: user.phone,
+        photo: user.photo,
         role: user.role,
         organizationId: organization.id,
       },

@@ -57,6 +57,7 @@ model User {
   email          String?       @unique
   phone          String?       @unique
   passwordHash   String?
+  photo          String?
   role           Role          @default(PATIENT)
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt

@@ -5,11 +5,12 @@ import { comparePassword, createSessionToken, COOKIE_NAME } from "@/lib/auth";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { identifier, password } = body; // identifier can be email or phone
+    const { email, identifier, password } = body;
+    const loginIdentifier = (email || identifier || "").trim().toLowerCase();
 
-    if (!identifier || !password) {
+    if (!loginIdentifier || !password) {
       return NextResponse.json(
-        { success: false, error: "Email or phone and password are required." },
+        { success: false, error: "Email and password are required." },
         { status: 400 }
       );
     }
@@ -18,8 +19,8 @@ export async function POST(req: NextRequest) {
     const user = await prisma.user.findFirst({
       where: {
         OR: [
-          { email: identifier },
-          { phone: identifier },
+          { email: loginIdentifier },
+          { phone: loginIdentifier },
         ],
       },
       include: {
@@ -29,7 +30,7 @@ export async function POST(req: NextRequest) {
 
     if (!user || !user.passwordHash) {
       return NextResponse.json(
-        { success: false, error: "Invalid credentials. Please check your email/phone and password." },
+        { success: false, error: "Invalid credentials. Please verify your email and password." },
         { status: 401 }
       );
     }
@@ -37,7 +38,7 @@ export async function POST(req: NextRequest) {
     const isValidPassword = await comparePassword(password, user.passwordHash);
     if (!isValidPassword) {
       return NextResponse.json(
-        { success: false, error: "Invalid credentials. Please check your email/phone and password." },
+        { success: false, error: "Invalid credentials. Please verify your email and password." },
         { status: 401 }
       );
     }
@@ -59,23 +60,25 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Issue JWT token
+    // Issue JWT token with photo
     const token = await createSessionToken({
       userId: user.id,
       organizationId: user.organizationId,
       role: user.role,
       email: user.email || undefined,
       name: user.name,
+      photo: user.photo || undefined,
     });
 
     const response = NextResponse.json({
       success: true,
-      message: "Login successful!",
+      message: "Login successful! Welcome back.",
       user: {
         id: user.id,
         name: user.name,
         email: user.email,
         phone: user.phone,
+        photo: user.photo,
         role: user.role,
         organizationId: user.organizationId,
       },
@@ -88,7 +91,7 @@ export async function POST(req: NextRequest) {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       path: "/",
-      maxAge: 30 * 24 * 60 * 60,
+      maxAge: 30 * 24 * 60 * 60, // 30 days
       sameSite: "lax",
     });
 
