@@ -683,9 +683,13 @@ export default function UploadPrescriptionPage() {
                       {/* Left Info */}
                       <div className="space-y-1 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-extrabold text-base text-slate-900 dark:text-white">
-                            {med.resolvedBrand}
-                          </span>
+                          <input
+                            type="text"
+                            value={med.resolvedBrand}
+                            onChange={(e) => handleUpdateMedicine(index, "resolvedBrand", e.target.value)}
+                            className="font-extrabold text-base text-slate-900 dark:text-white bg-transparent border-b border-dashed border-slate-300 dark:border-slate-700 hover:border-teal-500 focus:border-teal-500 focus:outline-none px-1 py-0.5 rounded transition-colors"
+                            title="Click to edit medicine name"
+                          />
                           <span className="text-xs px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold">
                             {med.strength || "Standard"}
                           </span>
@@ -714,6 +718,15 @@ export default function UploadPrescriptionPage() {
                           <p className="text-[11px] text-slate-500 dark:text-slate-400">
                             Catalog Match: <strong>{med.matchedCatalogItem.manufacturer}</strong> • Unit Price: ৳{med.matchedCatalogItem.unitPrice.toFixed(2)}
                           </p>
+                        )}
+
+                        {!isHigh && (
+                          <div className="mt-2 p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 flex items-start gap-2 text-[11px] text-amber-900 dark:text-amber-200">
+                            <AlertTriangle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0 mt-0.5" />
+                            <span>
+                              <strong>Verification Required:</strong> We couldn't confidently identify this medicine. Please verify the medicine name before continuing.
+                            </span>
+                          </div>
                         )}
                       </div>
 

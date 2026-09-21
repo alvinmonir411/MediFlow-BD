@@ -102,6 +102,7 @@ model MedicineCatalog {
   unitPrice          Decimal?             @db.Decimal(10, 2)
   isAntibiotic       Boolean              @default(false)
   instructions       String?              // Default instruction
+  status             String               @default("ACTIVE") // ACTIVE, RESTRICTED, DISCONTINUED
   createdAt          DateTime             @default(now())
 
   @@index([brandName])
