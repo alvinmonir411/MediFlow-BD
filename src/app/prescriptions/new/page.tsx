@@ -23,6 +23,7 @@ import {
   FileText,
   Clock,
   ChevronRight,
+  Edit3,
   HelpCircle,
   Eye
 } from "lucide-react";
@@ -49,6 +50,7 @@ export default function UploadPrescriptionPage() {
   const [extractedData, setExtractedData] = useState<FullProcessedPrescription | null>(null);
   const [medicines, setMedicines] = useState<ResolvedMedicineResult[]>([]);
   const [confirming, setConfirming] = useState(false);
+  const [isEditingInfo, setIsEditingInfo] = useState(false);
 
   // Process File
   const processSelectedFile = (file: File) => {
@@ -679,9 +681,54 @@ export default function UploadPrescriptionPage() {
                         : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
                     }`}
                   >
-                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                      {/* Left Info */}
-                      <div className="space-y-1 flex-1">
+                    {!isEditingInfo ? (
+                      /* Section 9 Checklist Display View */
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="flex items-start gap-3.5">
+                          <div className="w-7 h-7 rounded-xl bg-emerald-100 dark:bg-emerald-950 text-emerald-600 flex items-center justify-center font-black flex-shrink-0 mt-0.5">
+                            ✓
+                          </div>
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h4 className="font-black text-base text-slate-900 dark:text-white">
+                                {med.resolvedBrand} {med.strength}
+                              </h4>
+                              <span className="text-xs text-slate-400">
+                                ({med.resolvedGeneric})
+                              </span>
+                              <span
+                                className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                                  isHigh
+                                    ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/80 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800"
+                                    : "bg-amber-50 text-amber-700 dark:bg-amber-950/80 dark:text-amber-300 border-amber-300 dark:border-amber-800"
+                                }`}
+                              >
+                                {Math.round(med.confidenceScore * 100)}% Match
+                              </span>
+                            </div>
+
+                            <div className="text-xs text-slate-600 dark:text-slate-300 space-y-0.5 pl-0.5">
+                              <p className="font-semibold text-slate-800 dark:text-slate-200">{med.dose}</p>
+                              <p className="font-mono text-slate-600 dark:text-slate-400">{med.frequency}</p>
+                              <p className="text-slate-500">{med.durationDays} days</p>
+                              <p className="text-teal-600 dark:text-teal-400 font-semibold">{med.foodTiming.replace(/_/g, " ")}</p>
+                              {med.additionalInstructions && (
+                                <p className="text-slate-400 italic text-[11px]">Note: {med.additionalInstructions}</p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {!isHigh && (
+                          <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 flex items-start gap-2 text-[11px] text-amber-900 dark:text-amber-200 max-w-xs">
+                            <AlertTriangle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0 mt-0.5" />
+                            <span>Verify medicine before confirming.</span>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      /* Editable Form View */
+                      <div className="space-y-4">
                         <div className="flex items-center gap-2 flex-wrap">
                           <input
                             type="text"
@@ -696,128 +743,96 @@ export default function UploadPrescriptionPage() {
                           <span className="text-xs text-slate-500">
                             ({med.resolvedGeneric})
                           </span>
-
-                          <span
-                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                              isHigh
-                                ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/80 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800"
-                                : "bg-amber-50 text-amber-700 dark:bg-amber-950/80 dark:text-amber-300 border-amber-300 dark:border-amber-800"
-                            }`}
-                          >
-                            Confidence: {Math.round(med.confidenceScore * 100)}%
-                          </span>
-
-                          {med.isAntibiotic && (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 dark:bg-rose-900/60 dark:text-rose-200 border border-rose-300 dark:border-rose-700">
-                              Antibiotic Guard
-                            </span>
-                          )}
                         </div>
 
-                        {med.matchedCatalogItem && (
-                          <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                            Catalog Match: <strong>{med.matchedCatalogItem.manufacturer}</strong> • Unit Price: ৳{med.matchedCatalogItem.unitPrice.toFixed(2)}
-                          </p>
-                        )}
-
-                        {!isHigh && (
-                          <div className="mt-2 p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 flex items-start gap-2 text-[11px] text-amber-900 dark:text-amber-200">
-                            <AlertTriangle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0 mt-0.5" />
-                            <span>
-                              <strong>Verification Required:</strong> We couldn't confidently identify this medicine. Please verify the medicine name before continuing.
-                            </span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Editable Form Controls */}
-                      <div className="flex flex-wrap items-center gap-3">
-                        <div>
-                          <label className="text-[10px] font-bold text-slate-500 block uppercase">
-                            Dose
-                          </label>
-                          <input
-                            type="text"
-                            value={med.dose}
-                            onChange={(e) => handleUpdateMedicine(index, "dose", e.target.value)}
-                            className="w-24 px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="text-[10px] font-bold text-slate-500 block uppercase">
-                            Frequency
-                          </label>
-                          <input
-                            type="text"
-                            value={med.frequency}
-                            onChange={(e) => handleUpdateMedicine(index, "frequency", e.target.value)}
-                            className="w-24 px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="text-[10px] font-bold text-slate-500 block uppercase">
-                            Food Instruction
-                          </label>
-                          <select
-                            value={med.foodTiming}
-                            onChange={(e) => handleUpdateMedicine(index, "foodTiming", e.target.value)}
-                            className="px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white"
-                          >
-                            <option value="BEFORE_FOOD">Before Food (খাবারের পূর্বে)</option>
-                            <option value="AFTER_FOOD">After Food (খাবারের পরে)</option>
-                            <option value="EMPTY_STOMACH">Empty Stomach (খালি পেটে)</option>
-                            <option value="WITH_FOOD">With Food (খাবারের সাথে)</option>
-                            <option value="AS_NEEDED">As Needed (প্রয়োজনে)</option>
-                          </select>
-                        </div>
-
-                        <div>
-                          <label className="text-[10px] font-bold text-slate-500 block uppercase">
-                            Duration
-                          </label>
-                          <div className="flex items-center gap-1">
+                        <div className="flex flex-wrap items-center gap-3">
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-500 block uppercase">
+                              Dose
+                            </label>
                             <input
-                              type="number"
-                              value={med.durationDays}
-                              onChange={(e) => handleUpdateMedicine(index, "durationDays", parseInt(e.target.value) || 1)}
-                              className="w-16 px-2 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white"
+                              type="text"
+                              value={med.dose}
+                              onChange={(e) => handleUpdateMedicine(index, "dose", e.target.value)}
+                              className="w-24 px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white"
                             />
-                            <span className="text-xs text-slate-500">Days</span>
                           </div>
-                        </div>
 
-                        <div>
-                          <label className="text-[10px] font-bold text-slate-500 block uppercase">
-                            Additional Instruction
-                          </label>
-                          <input
-                            type="text"
-                            placeholder="e.g. Drink plenty of water"
-                            value={med.additionalInstructions || ""}
-                            onChange={(e) => handleUpdateMedicine(index, "additionalInstructions", e.target.value)}
-                            className="w-44 px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white"
-                          />
-                        </div>
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-500 block uppercase">
+                              Frequency
+                            </label>
+                            <input
+                              type="text"
+                              value={med.frequency}
+                              onChange={(e) => handleUpdateMedicine(index, "frequency", e.target.value)}
+                              className="w-24 px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white"
+                            />
+                          </div>
 
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveMedicine(index)}
-                          className="p-2 text-slate-400 hover:text-rose-600 transition-colors self-end mb-0.5"
-                          title="Remove item"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-500 block uppercase">
+                              Food Instruction
+                            </label>
+                            <select
+                              value={med.foodTiming}
+                              onChange={(e) => handleUpdateMedicine(index, "foodTiming", e.target.value)}
+                              className="px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white"
+                            >
+                              <option value="BEFORE_FOOD">Before Food (খাবারের পূর্বে)</option>
+                              <option value="AFTER_FOOD">After Food (খাবারের পরে)</option>
+                              <option value="EMPTY_STOMACH">Empty Stomach (খালি পেটে)</option>
+                              <option value="WITH_FOOD">With Food (খাবারের সাথে)</option>
+                              <option value="AS_NEEDED">As Needed (প্রয়োজনে)</option>
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-500 block uppercase">
+                              Duration
+                            </label>
+                            <div className="flex items-center gap-1">
+                              <input
+                                type="number"
+                                value={med.durationDays}
+                                onChange={(e) => handleUpdateMedicine(index, "durationDays", parseInt(e.target.value) || 1)}
+                                className="w-16 px-2 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white"
+                              />
+                              <span className="text-xs text-slate-500">Days</span>
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-500 block uppercase">
+                              Additional Instruction
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="e.g. Drink plenty of water"
+                              value={med.additionalInstructions || ""}
+                              onChange={(e) => handleUpdateMedicine(index, "additionalInstructions", e.target.value)}
+                              className="w-44 px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white"
+                            />
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveMedicine(index)}
+                            className="p-2 text-slate-400 hover:text-rose-600 transition-colors self-end mb-0.5"
+                            title="Remove item"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 );
               })}
             </div>
           </div>
 
-          {/* Confirm & Activate Medication Routine Action */}
+          {/* Section 9 Buttons: Confirm Prescription & Edit Information */}
           <div className="p-6 rounded-3xl bg-gradient-to-r from-teal-900 to-slate-900 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-6 shadow-xl">
             <div className="space-y-1 max-w-xl">
               <span className="text-xs font-bold text-teal-400 uppercase tracking-wider block">
@@ -827,18 +842,29 @@ export default function UploadPrescriptionPage() {
                 Confirm Prescription & Create Medication Routine
               </h4>
               <p className="text-xs text-teal-200/80">
-                Clicking confirm activates these verified medicines into your daily medication schedule and begins dose tracking with reminders.
+                Only after confirmation are medication schedules created in your schedule.
               </p>
             </div>
 
-            <button
-              onClick={handleConfirmPrescription}
-              disabled={confirming || medicines.length === 0}
-              className="px-6 py-3.5 rounded-2xl bg-teal-400 hover:bg-teal-300 active:scale-95 text-slate-950 font-black text-sm transition-all flex items-center justify-center gap-2 shadow-lg shadow-teal-400/20 whitespace-nowrap disabled:opacity-60"
-            >
-              <CheckCircle2 className="w-5 h-5" />
-              <span>{confirming ? "Saving Routine..." : "Confirm Prescription"}</span>
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setIsEditingInfo(!isEditingInfo)}
+                className="px-5 py-3.5 rounded-2xl bg-white/10 hover:bg-white/20 active:scale-95 text-white font-bold text-sm transition-all border border-white/20 flex items-center justify-center gap-2 whitespace-nowrap"
+              >
+                <Edit3 className="w-4 h-4" />
+                <span>{isEditingInfo ? "Done Editing" : "Edit Information"}</span>
+              </button>
+
+              <button
+                onClick={handleConfirmPrescription}
+                disabled={confirming || medicines.length === 0}
+                className="px-6 py-3.5 rounded-2xl bg-teal-400 hover:bg-teal-300 active:scale-95 text-slate-950 font-black text-sm transition-all flex items-center justify-center gap-2 shadow-lg shadow-teal-400/20 whitespace-nowrap disabled:opacity-60"
+              >
+                <CheckCircle2 className="w-5 h-5" />
+                <span>{confirming ? "Saving Routine..." : "Confirm Prescription"}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
