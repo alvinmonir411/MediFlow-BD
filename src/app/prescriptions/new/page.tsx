@@ -775,6 +775,19 @@ export default function UploadPrescriptionPage() {
                           </div>
                         </div>
 
+                        <div>
+                          <label className="text-[10px] font-bold text-slate-500 block uppercase">
+                            Additional Instruction
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="e.g. Drink plenty of water"
+                            value={med.additionalInstructions || ""}
+                            onChange={(e) => handleUpdateMedicine(index, "additionalInstructions", e.target.value)}
+                            className="w-44 px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white"
+                          />
+                        </div>
+
                         <button
                           type="button"
                           onClick={() => handleRemoveMedicine(index)}

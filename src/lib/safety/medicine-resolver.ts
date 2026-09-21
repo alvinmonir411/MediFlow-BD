@@ -10,6 +10,7 @@ export interface ResolvedMedicineResult {
   frequency: string;
   foodTiming: "BEFORE_FOOD" | "AFTER_FOOD" | "EMPTY_STOMACH" | "WITH_FOOD" | "AS_NEEDED";
   durationDays: number;
+  additionalInstructions?: string;
   confidenceScore: number;
   confidenceLevel: "HIGH" | "MEDIUM" | "LOW";
   isAntibiotic: boolean;
@@ -21,7 +22,8 @@ export function resolveMedicine(
   rawStrength?: string,
   rawFrequency: string = "1+0+1",
   rawTiming?: string,
-  rawDuration?: number
+  rawDuration?: number,
+  rawInstructions?: string
 ): ResolvedMedicineResult {
   const cleanInput = rawName.trim().toLowerCase();
   
@@ -86,6 +88,7 @@ export function resolveMedicine(
     frequency: rawFrequency,
     foodTiming,
     durationDays: rawDuration || (isAntibiotic ? 7 : 5),
+    additionalInstructions: rawInstructions || "",
     confidenceScore: highestScore,
     confidenceLevel,
     isAntibiotic,

@@ -45,9 +45,6 @@ export async function extractPrescriptionWithGemini(
   }
 
   const genAI = new GoogleGenerativeAI(apiKey);
-  
-  // Use gemini-3.6-flash (current verified active flash model for this key)
-  const model = genAI.getGenerativeModel({ model: "gemini-3.6-flash" });
 
   const prompt = `
 You are an expert medical prescription document OCR and structured data extractor for MediFlow BD (Bangladesh).
@@ -92,9 +89,26 @@ Output STRICTLY valid JSON conforming to this schema without any markdown wrappi
     },
   };
 
-  const result = await model.generateContent([prompt, imagePart]);
-  const responseText = result.response.text();
-  
+  const modelsToTry = ["gemini-3.5-flash", "gemini-3.6-flash"];
+  let responseText = "";
+  let lastError: any = null;
+
+  for (const modelName of modelsToTry) {
+    try {
+      const model = genAI.getGenerativeModel({ model: modelName });
+      const result = await model.generateContent([prompt, imagePart]);
+      responseText = result.response.text();
+      if (responseText) break;
+    } catch (err: any) {
+      lastError = err;
+      console.warn(`Model ${modelName} failed, falling back to next model:`, err.message?.slice(0, 150));
+    }
+  }
+
+  if (!responseText) {
+    throw new Error(lastError?.message || "Failed to extract prescription with Gemini AI models. Please try again.");
+  }
+
   // Strip code fences if present
   const cleanJson = responseText
     .replace(/```json/gi, "")
@@ -116,7 +130,7 @@ Output STRICTLY valid JSON conforming to this schema without any markdown wrappi
 
   // Resolve against verified Bangladesh Medicine Database
   const resolvedMedicines: ResolvedMedicineResult[] = validated.medicines.map((m) =>
-    resolveMedicine(m.rawName, m.strength, m.frequency, m.timing, m.durationDays)
+    resolveMedicine(m.rawName, m.strength, m.frequency, m.timing, m.durationDays, m.instructions)
   );
 
   // Deterministic rule checks (Duplicate therapy, antibiotic course)

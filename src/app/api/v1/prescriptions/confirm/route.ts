@@ -74,6 +74,7 @@ export async function POST(req: NextRequest) {
           foodTiming: (med.foodTiming as any) || "AFTER_FOOD",
           durationDays: med.durationDays || 5,
           confidenceScore: med.confidenceScore || 0.95,
+          notes: med.additionalInstructions || null,
         },
       });
 
