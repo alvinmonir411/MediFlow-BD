@@ -4,8 +4,8 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 
 export const metadata: Metadata = {
-  title: "MediFlow BD — Smart Prescription & Medication Management",
-  description: "Offline-first, AI-assisted prescription scanner, dose reminders, and patient health platform for Bangladesh.",
+  title: "PrescriptionMate BD — Smart Prescription & Medication Management",
+  description: "Offline-friendly, AI-assisted prescription scanner, dose reminders, and health-tech SaaS platform for Bangladesh.",
 };
 
 export default function RootLayout({

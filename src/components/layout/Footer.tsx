@@ -9,7 +9,7 @@ export function Footer() {
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-teal-600" />
             <span>
-              <strong>MediFlow BD</strong> — Prescription & Medication Management Platform.
+              <strong>PrescriptionMate BD</strong> — Prescription & Medication Management Platform.
             </span>
           </div>
 

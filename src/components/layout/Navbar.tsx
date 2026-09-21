@@ -102,7 +102,7 @@ export function Navbar() {
             <div>
               <div className="flex items-center gap-1.5">
                 <span className="font-bold text-lg tracking-tight text-slate-900 dark:text-white">
-                  MediFlow <span className="text-teal-600 dark:text-teal-400 font-extrabold">BD</span>
+                  PrescriptionMate <span className="text-teal-600 dark:text-teal-400 font-extrabold">BD</span>
                 </span>
                 <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-teal-100 text-teal-800 dark:bg-teal-900/60 dark:text-teal-300 border border-teal-200 dark:border-teal-700">
                   Neon DB
