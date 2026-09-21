@@ -1,0 +1,227 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPER_ADMIN
+  ORG_ADMIN
+  CAREGIVER
+  PATIENT
+  DOCTOR
+  STAFF
+}
+
+enum DoseStatus {
+  SCHEDULED
+  REMINDER_SENT
+  TAKEN
+  MISSED
+  ESCALATED
+  CAREGIVER_ALERTED
+  SKIPPED
+  CANCELLED
+  LATE
+}
+
+enum FoodInstruction {
+  BEFORE_FOOD
+  AFTER_FOOD
+  EMPTY_STOMACH
+  WITH_FOOD
+  AS_NEEDED
+}
+
+model Organization {
+  id          String       @id @default(cuid())
+  name        String
+  type        String       @default("CLINIC")
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  users       User[]
+  patients    Patient[]
+  auditLogs   AuditLog[]
+
+  @@map("organizations")
+}
+
+model User {
+  id             String        @id @default(cuid())
+  organizationId String
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  email          String?       @unique
+  phone          String?       @unique
+  passwordHash   String?
+  role           Role          @default(PATIENT)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  patients       Patient[]     @relation("PatientCreator")
+  doseLogs       DoseLog[]
+  auditLogs      AuditLog[]
+
+  @@map("users")
+}
+
+model Patient {
+  id                 String               @id @default(cuid())
+  organizationId     String
+  organization       Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdByUserId    String
+  createdByUser      User                 @relation("PatientCreator", fields: [createdByUserId], references: [id])
+  name               String
+  dateOfBirth        DateTime?
+  gender             String?
+  bloodGroup         String?              // e.g. "B+", "O+", "A-"
+  emergencyContact   String?
+  allergies          String?              // Comma-separated or JSON string
+  chronicConditions  String?              // e.g. "Hypertension, Type 2 Diabetes"
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  prescriptions      Prescription[]
+  schedules          MedicationSchedule[]
+  emergencyProfile   EmergencyProfile?
+
+  @@map("patients")
+}
+
+model MedicineCatalog {
+  id                 String               @id @default(cuid())
+  brandName          String               // e.g. "Napa", "Seclo"
+  genericName        String               // e.g. "Paracetamol", "Omeprazole"
+  strength           String               // e.g. "500 mg", "20 mg"
+  dosageForm         String               // e.g. "Tablet", "Capsule", "Syrup"
+  manufacturer       String               // e.g. "Beximco Pharmaceuticals Ltd."
+  unitPrice          Decimal?             @db.Decimal(10, 2)
+  isAntibiotic       Boolean              @default(false)
+  instructions       String?              // Default instruction
+  createdAt          DateTime             @default(now())
+
+  @@index([brandName])
+  @@index([genericName])
+  @@map("medicine_catalog")
+}
+
+model Prescription {
+  id                 String                 @id @default(cuid())
+  patientId          String
+  patient            Patient                @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctorName         String?
+  hospitalName       String?
+  prescriptionDate   DateTime?
+  imageStorageKey    String?
+  imageUrl           String?
+  rawExtraction      String?                // JSON dump from Gemini 2.5 Flash
+  status             String                 @default("DRAFT") // DRAFT, CONFIRMED, ARCHIVED
+  confirmedAt        DateTime?
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+  medicines          PrescriptionMedicine[]
+
+  @@map("prescriptions")
+}
+
+model PrescriptionMedicine {
+  id                 String               @id @default(cuid())
+  prescriptionId     String
+  prescription       Prescription         @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+  medicineCatalogId  String?
+  rawName            String
+  resolvedBrand      String?
+  resolvedGeneric    String?
+  strength           String?
+  dose               String               // e.g. "1 Tablet"
+  frequency          String               // e.g. "1+0+1" or "1+1+1"
+  foodTiming         FoodInstruction      @default(AFTER_FOOD)
+  durationDays       Int?                 // e.g. 5, 7, 30
+  confidenceScore    Float                @default(0.9)
+  notes              String?
+  createdAt          DateTime             @default(now())
+  schedules          MedicationSchedule[]
+
+  @@map("prescription_medicines")
+}
+
+model MedicationSchedule {
+  id                     String                @id @default(cuid())
+  patientId              String
+  patient                Patient               @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  prescriptionMedicineId String?
+  prescriptionMedicine   PrescriptionMedicine? @relation(fields: [prescriptionMedicineId], references: [id], onDelete: SetNull)
+  medicineName           String
+  dosage                 String
+  frequency              String
+  foodTiming             FoodInstruction       @default(AFTER_FOOD)
+  startDate              DateTime              @default(now())
+  endDate                DateTime?
+  isActive               Boolean               @default(true)
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
+  doses                  MedicationDose[]
+
+  @@map("medication_schedules")
+}
+
+model MedicationDose {
+  id                 String             @id @default(cuid())
+  scheduleId         String
+  schedule           MedicationSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  scheduledAt        DateTime
+  timeSlot           String             // "MORNING", "AFTERNOON", "EVENING", "NIGHT"
+  status             DoseStatus         @default(SCHEDULED)
+  takenAt            DateTime?
+  notes              String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  logs               DoseLog[]
+
+  @@index([scheduledAt, status])
+  @@map("medication_doses")
+}
+
+model DoseLog {
+  id                 String         @id @default(cuid())
+  doseId             String
+  dose               MedicationDose @relation(fields: [doseId], references: [id], onDelete: Cascade)
+  userId             String?
+  user               User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action             String         // "MARKED_TAKEN", "SKIPPED", "SNOOZED", "MISSED"
+  loggedAt           DateTime       @default(now())
+  source             String         @default("WEB") // "WEB", "MOBILE", "AUTO_TIMEOUT"
+
+  @@map("dose_logs")
+}
+
+model EmergencyProfile {
+  id                 String    @id @default(cuid())
+  patientId          String    @unique
+  patient            Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  qrCodeToken        String    @unique @default(cuid())
+  cachedJson         String    // JSON snapshot for instant offline view
+  lastSyncedAt       DateTime  @default(now())
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@map("emergency_profiles")
+}
+
+model AuditLog {
+  id                 String       @id @default(cuid())
+  organizationId     String
+  organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId             String?
+  user               User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action             String       // "PRESCRIPTION_UPLOADED", "PRESCRIPTION_CONFIRMED", "DOSE_TAKEN", "EMERGENCY_ACCESSED"
+  resourceType       String       // "Prescription", "MedicationDose", "EmergencyProfile"
+  resourceId         String
+  diffJson           String?
+  ipAddress          String?
+  createdAt          DateTime     @default(now())
+
+  @@index([organizationId, createdAt])
+  @@map("audit_logs")
+}
