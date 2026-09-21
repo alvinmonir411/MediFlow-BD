@@ -133,7 +133,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: "Prescription confirmed and real schedules successfully saved to Neon PostgreSQL!",
+      message: "Prescription confirmed and real schedules successfully activated!",
       prescriptionId: prescription.id,
       scheduleCount: createdSchedules.length,
     });

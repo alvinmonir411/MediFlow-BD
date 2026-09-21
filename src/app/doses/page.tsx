@@ -125,13 +125,13 @@ export default function DosesPage() {
         <div>
           <div className="flex items-center gap-2 text-teal-600 dark:text-teal-400 text-xs font-bold uppercase tracking-wider">
             <Pill className="w-4 h-4" />
-            Live Medication Doses (Neon DB)
+            Live Medication Tracker
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white mt-1">
             Today's Medication Schedule
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Live doses synchronized directly with your Neon PostgreSQL database.
+            Live doses synchronized with your medication schedule in real-time.
           </p>
         </div>
 

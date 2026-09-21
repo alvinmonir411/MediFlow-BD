@@ -134,7 +134,7 @@ export default function ProfilePage() {
       const json = await res.json();
       if (!json.success) throw new Error(json.error || "Failed to update profile.");
 
-      setStatus({ type: "success", msg: "Profile updated successfully in Neon PostgreSQL!" });
+      setStatus({ type: "success", msg: "Profile updated successfully!" });
       window.dispatchEvent(new Event("mediflow_patient_changed"));
     } catch (err: any) {
       setStatus({ type: "error", msg: err.message || "An error occurred." });
@@ -152,7 +152,7 @@ export default function ProfilePage() {
           <div className="w-12 h-12 rounded-2xl bg-teal-50 dark:bg-teal-950/60 flex items-center justify-center">
             <Loader2 className="w-6 h-6 text-teal-600 animate-spin" />
           </div>
-          <p className="text-xs font-semibold text-slate-500">Loading patient profile from Neon DB...</p>
+          <p className="text-xs font-semibold text-slate-500">Loading patient profile...</p>
         </div>
       </div>
     );
@@ -393,7 +393,7 @@ export default function ProfilePage() {
             {/* Save Button */}
             <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <p className="text-[11px] text-slate-400">
-                Saved to Neon PostgreSQL · Last updated: {new Date().toLocaleDateString("en-BD")}
+                Auto-saved · Last updated: {new Date().toLocaleDateString("en-BD")}
               </p>
               <button
                 type="submit"
@@ -489,7 +489,7 @@ export default function ProfilePage() {
             {/* Save Button */}
             <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <p className="text-[11px] text-slate-400">
-                Saved to Neon PostgreSQL · Encrypted in transit
+                Securely saved · Encrypted in transit
               </p>
               <button
                 type="submit"

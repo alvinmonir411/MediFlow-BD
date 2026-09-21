@@ -103,9 +103,9 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (error: any) {
-    console.error("Fetch doses from Neon DB error:", error);
+    console.error("Fetch doses error:", error);
     return NextResponse.json(
-      { success: false, error: error.message || "Failed to fetch doses from Neon DB." },
+      { success: false, error: error.message || "Failed to fetch medication doses." },
       { status: 500 }
     );
   }

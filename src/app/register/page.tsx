@@ -367,7 +367,7 @@ export default function RegisterPage() {
             {loading ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Creating Account in Neon DB...</span>
+                <span>Creating Account...</span>
               </>
             ) : (
               <>

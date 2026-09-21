@@ -344,7 +344,7 @@ export default function FamilyPage() {
                   disabled={submitting}
                   className="px-5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-md shadow-teal-600/20"
                 >
-                  {submitting ? "Saving to Neon DB..." : "Save Family Member"}
+                  {submitting ? "Saving..." : "Save Family Member"}
                 </button>
               </div>
             </form>

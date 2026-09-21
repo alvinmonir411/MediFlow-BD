@@ -102,9 +102,9 @@ export default function DashboardPage() {
             <div className="flex items-center gap-2">
               <span className="px-3 py-1 rounded-full text-xs font-semibold bg-teal-500/20 text-teal-200 border border-teal-400/30 flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                Live Neon Database Active
+                Cloud Sync Active
               </span>
-              <span className="text-xs text-teal-300/80">PostgreSQL (Neon)</span>
+              <span className="text-xs text-teal-300/80">Real-time</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
               {patient?.name || "Md. Rafiqul Islam"}
@@ -206,7 +206,7 @@ export default function DashboardPage() {
               Today's Medication
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              Morning, noon, and night dose schedule stored in Neon PostgreSQL.
+              Morning, noon, and night dose schedule tracked in real-time.
             </p>
           </div>
           <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-semibold text-slate-700 dark:text-slate-300">

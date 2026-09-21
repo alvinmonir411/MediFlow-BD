@@ -289,8 +289,8 @@ export default function NewPrescriptionPage() {
           </div>
 
           <div className="pt-4 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
-            <span>Model: Gemini 3.6 Flash</span>
-            <span>Database: Neon PostgreSQL</span>
+            <span>AI Model: Gemini 3.6 Flash</span>
+            <span>Storage: Secure Encrypted Cloud</span>
           </div>
         </div>
       </div>
@@ -485,13 +485,13 @@ export default function NewPrescriptionPage() {
           <div className="p-6 rounded-3xl bg-gradient-to-r from-teal-900 to-slate-900 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-6 shadow-xl">
             <div className="space-y-1 max-w-xl">
               <span className="text-xs font-bold text-teal-400 uppercase tracking-wider block">
-                Save to Neon PostgreSQL
+                Save Medication Schedule
               </span>
               <h4 className="font-extrabold text-lg text-white">
                 Confirm & Activate Real Medication Schedule
               </h4>
               <p className="text-xs text-teal-200/80">
-                Clicking confirm writes this prescription and today's dose slots directly to your Neon database and records an immutable audit log entry.
+                Clicking confirm activates this prescription and today's dose slots directly to your schedule and records an immutable audit log entry.
               </p>
             </div>
 
@@ -501,7 +501,7 @@ export default function NewPrescriptionPage() {
               className="px-6 py-3.5 rounded-2xl bg-teal-500 hover:bg-teal-400 active:scale-95 text-slate-950 font-extrabold text-sm transition-all flex items-center justify-center gap-2 shadow-lg shadow-teal-500/20 whitespace-nowrap"
             >
               <CheckCircle2 className="w-5 h-5" />
-              {confirming ? "Saving to Neon DB..." : "Confirm & Save to Neon"}
+              {confirming ? "Saving Schedule..." : "Confirm & Activate Schedule"}
             </button>
           </div>
         </div>
